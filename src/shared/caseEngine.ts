@@ -1,4 +1,5 @@
 import type { AccessCase, ConnectorStatus, LiveDataSummary, NextAction, Scenario } from './types';
+import { buildEpicWorkflowActions } from './epicWorkflowActions';
 
 export function buildAccessCase(
   scenario: Scenario,
@@ -18,6 +19,7 @@ export function buildAccessCase(
     hiddenTimelineCount: scenario.timeline.length - visibleTimeline.length,
     nextAction,
     connectorStatus,
+    epicWorkflowActions: buildEpicWorkflowActions(scenario),
     liveData
   };
 }

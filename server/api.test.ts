@@ -207,6 +207,17 @@ describe('Instinct API', () => {
           address: [{ city: 'Madison', state: 'WI' }]
         });
       }
+      if (requestUrl.endsWith('/Patient/$match')) {
+        expect(init?.method).toBe('POST');
+        return jsonResponse(bundle('Patient', [
+          {
+            resourceType: 'Patient',
+            id: 'patient-1',
+            birthDate: '1970-05-01',
+            name: [{ given: ['Jordan'], family: 'Lee' }]
+          }
+        ]));
+      }
       if (requestUrl.includes('/Coverage?')) {
         return jsonResponse(bundle('Coverage', [
           {
@@ -226,6 +237,16 @@ describe('Instinct API', () => {
             status: 'active',
             medicationCodeableConcept: { text: 'Ozempic 0.25 MG Injection' }
           }
+        ]));
+      }
+      if (requestUrl.includes('/List?')) {
+        return jsonResponse(bundle('List', [
+          { resourceType: 'List', id: 'current-meds', title: 'Current Medications' }
+        ]));
+      }
+      if (requestUrl.includes('/Medication?')) {
+        return jsonResponse(bundle('Medication', [
+          { resourceType: 'Medication', id: 'rx-ozempic', code: { text: 'Ozempic' } }
         ]));
       }
       if (requestUrl.includes('/MedicationDispense?')) {
@@ -248,6 +269,41 @@ describe('Instinct API', () => {
             code: { text: 'Hemoglobin A1c' },
             valueQuantity: { value: 8.4, unit: '%' }
           }
+        ]));
+      }
+      if (requestUrl.includes('/ExplanationOfBenefit?')) {
+        return jsonResponse(bundle('ExplanationOfBenefit', [
+          { resourceType: 'ExplanationOfBenefit', id: 'eob-pa-1', use: 'preauthorization' }
+        ]));
+      }
+      if (requestUrl.includes('/QuestionnaireResponse?')) {
+        return jsonResponse(bundle('QuestionnaireResponse', [
+          { resourceType: 'QuestionnaireResponse', id: 'qr-pa-1', status: 'completed' }
+        ]));
+      }
+      if (requestUrl.includes('/CareTeam?')) {
+        return jsonResponse(bundle('CareTeam', [
+          { resourceType: 'CareTeam', id: 'careteam-1', status: 'active' }
+        ]));
+      }
+      if (requestUrl.includes('/CarePlan?')) {
+        return jsonResponse(bundle('CarePlan', [
+          { resourceType: 'CarePlan', id: 'careplan-1', status: 'active' }
+        ]));
+      }
+      if (requestUrl.includes('/Procedure?')) {
+        return jsonResponse(bundle('Procedure', [
+          { resourceType: 'Procedure', id: 'procedure-1', status: 'completed' }
+        ]));
+      }
+      if (requestUrl.includes('/ServiceRequest?')) {
+        return jsonResponse(bundle('ServiceRequest', [
+          { resourceType: 'ServiceRequest', id: 'service-request-1', status: 'active' }
+        ]));
+      }
+      if (requestUrl.includes('/Appointment?')) {
+        return jsonResponse(bundle('Appointment', [
+          { resourceType: 'Appointment', id: 'appointment-1', status: 'booked' }
         ]));
       }
       if (requestUrl.includes('/DiagnosticReport?')) {
@@ -302,7 +358,44 @@ describe('Instinct API', () => {
       expect.arrayContaining([
         expect.objectContaining({ label: 'Conditions', count: 1, status: 'connected' }),
         expect.objectContaining({ label: 'Labs', count: 1, status: 'connected' }),
-        expect.objectContaining({ label: 'Clinical notes', count: 1, status: 'connected' })
+        expect.objectContaining({ label: 'Clinical notes', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'Patient match', api: 'Patient.$match (R4)', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'Medication list', api: 'List.Search (Medication List) (R4)', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'Formulary history', api: 'ExplanationOfBenefit.Search (Prior Auth History) (R4)', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'PA questionnaires', api: 'QuestionnaireResponse.Search (Prior Auth) (R4)', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'Care team', api: 'CareTeam.Search (R4)', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'Care plans', api: 'CarePlan.Search (R4)', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'Procedures', api: 'Procedure.Search (R4)', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'Service requests', api: 'ServiceRequest.Search (R4)', count: 1, status: 'connected' }),
+        expect.objectContaining({ label: 'Appointments', api: 'Appointment.Search (R4)', count: 1, status: 'connected' })
+      ])
+    );
+    expect(accessCase.epicWorkflowActions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Check payer requirements before submission',
+          api: 'Coverage Requirements Discovery (CRD Request) (R4)',
+          method: 'POST',
+          status: 'generated'
+        }),
+        expect.objectContaining({
+          label: 'Build prior-auth evidence questionnaire',
+          api: 'DTR Questionnaire Package Operation (R4)',
+          method: 'POST',
+          status: 'generated'
+        }),
+        expect.objectContaining({
+          label: 'Submit structured prior authorization',
+          api: 'Claim.$submit (Prior Auth) (R4)',
+          method: 'POST',
+          status: 'simulated-ready'
+        }),
+        expect.objectContaining({
+          label: 'Send supporting documentation',
+          api: '$submit-attachment (Prior Auth) (R4)',
+          method: 'POST',
+          status: 'simulated-ready'
+        })
       ])
     );
     expect(accessCase.chartEvidence).toEqual(

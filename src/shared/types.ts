@@ -154,12 +154,26 @@ export interface LiveDataSummary {
   note: string;
 }
 
+export type EpicWorkflowActionStatus = 'live-read' | 'generated' | 'simulated-ready' | 'blocked';
+
+export interface EpicWorkflowAction {
+  id: string;
+  label: string;
+  api: string;
+  method: 'GET' | 'POST' | 'PUT';
+  status: EpicWorkflowActionStatus;
+  owner: Role | 'system';
+  detail: string;
+  payloadPreview: string;
+}
+
 export interface AccessCase extends Scenario {
   currentStep: number;
   visibleTimeline: TimelineEvent[];
   hiddenTimelineCount: number;
   nextAction: NextAction;
   connectorStatus: ConnectorStatus[];
+  epicWorkflowActions: EpicWorkflowAction[];
   liveData?: LiveDataSummary;
 }
 

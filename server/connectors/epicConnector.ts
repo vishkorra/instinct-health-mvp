@@ -37,7 +37,15 @@ const epicScopes = [
   'user/Location.read',
   'user/ExplanationOfBenefit.read',
   'user/QuestionnaireResponse.read',
-  'user/ServiceRequest.read'
+  'user/ServiceRequest.read',
+  'user/CareTeam.read',
+  'user/CarePlan.read',
+  'user/Procedure.read',
+  'user/Appointment.read',
+  'user/Claim.read',
+  'user/Claim.write',
+  'user/MedicationRequest.write',
+  'user/Questionnaire.read'
 ];
 
 interface SmartConfiguration {
@@ -273,44 +281,107 @@ async function discoverSmartConfiguration(issuer: string): Promise<SmartConfigur
 }
 
 async function fetchEpicResources(session: EpicSession) {
-  const [patient, coverage, medicationRequests, medicationDispenses, conditions, labs, diagnosticReports, documents, allergies, encounters] =
-    await Promise.all([
-      fhirRead(session, `/Patient/${encodeURIComponent(session.patientId ?? '')}`),
-      fhirSearch(session, '/Coverage', { patient: session.patientId }),
-      fhirSearch(session, '/MedicationRequest', { patient: session.patientId }),
-      fhirSearch(session, '/MedicationDispense', { patient: session.patientId }),
-      fhirSearch(session, '/Condition', { patient: session.patientId }),
-      fhirSearch(session, '/Observation', { patient: session.patientId, category: 'laboratory' }),
-      fhirSearch(session, '/DiagnosticReport', { patient: session.patientId }),
-      fhirSearch(session, '/DocumentReference', { patient: session.patientId }),
-      fhirSearch(session, '/AllergyIntolerance', { patient: session.patientId }),
-      fhirSearch(session, '/Encounter', { patient: session.patientId })
-    ]);
-
-  const resources: LiveDataResourceSummary[] = [
-    resourceSummary('Patient', 'Patient.Read (Demographics) (R4)', patient ? 1 : 0),
-    resourceSummary('Coverage', 'Coverage.Search (Patient Insurance Information) (R4)', bundleCount(coverage)),
-    resourceSummary('Medication orders', 'MedicationRequest.Search (Signed Medication Order) (R4)', bundleCount(medicationRequests)),
-    resourceSummary('Fill status', 'MedicationDispense.Search (Fill Status) (R4)', bundleCount(medicationDispenses)),
-    resourceSummary('Conditions', 'Condition.Search (Problems / Encounter Diagnosis) (R4)', bundleCount(conditions)),
-    resourceSummary('Labs', 'Observation.Search (Labs) (R4)', bundleCount(labs)),
-    resourceSummary('Diagnostic reports', 'DiagnosticReport.Search (Results) (R4)', bundleCount(diagnosticReports)),
-    resourceSummary('Clinical notes', 'DocumentReference.Search (Clinical Notes) (R4)', bundleCount(documents)),
-    resourceSummary('Allergies', 'AllergyIntolerance.Search (Patient Chart) (R4)', bundleCount(allergies)),
-    resourceSummary('Encounters', 'Encounter.Search (Patient Chart) (R4)', bundleCount(encounters))
-  ];
-
-  return {
+  const patientId = session.patientId ?? '';
+  const [
     patient,
+    patientMatch,
     coverage,
     medicationRequests,
+    medicationList,
+    medicationResources,
     medicationDispenses,
     conditions,
     labs,
+    vitals,
+    assessments,
     diagnosticReports,
     documents,
     allergies,
     encounters,
+    priorAuthHistory,
+    paQuestionnaires,
+    careTeam,
+    carePlans,
+    procedures,
+    serviceRequests,
+    appointments
+  ] =
+    await Promise.all([
+      fhirRead(session, `/Patient/${encodeURIComponent(patientId)}`),
+      fhirPost(session, '/Patient/$match', {
+        resourceType: 'Parameters',
+        parameter: [{ name: 'resource', resource: { resourceType: 'Patient', id: patientId } }]
+      }),
+      fhirSearch(session, '/Coverage', { patient: patientId }),
+      fhirSearch(session, '/MedicationRequest', { patient: patientId }),
+      fhirSearch(session, '/List', { patient: patientId, code: 'medications' }),
+      fhirSearch(session, '/Medication', { patient: patientId }),
+      fhirSearch(session, '/MedicationDispense', { patient: patientId }),
+      fhirSearch(session, '/Condition', { patient: patientId }),
+      fhirSearch(session, '/Observation', { patient: patientId, category: 'laboratory' }),
+      fhirSearch(session, '/Observation', { patient: patientId, category: 'vital-signs' }),
+      fhirSearch(session, '/Observation', { patient: patientId, category: 'survey' }),
+      fhirSearch(session, '/DiagnosticReport', { patient: patientId }),
+      fhirSearch(session, '/DocumentReference', { patient: patientId }),
+      fhirSearch(session, '/AllergyIntolerance', { patient: patientId }),
+      fhirSearch(session, '/Encounter', { patient: patientId }),
+      fhirSearch(session, '/ExplanationOfBenefit', { patient: patientId, use: 'preauthorization' }),
+      fhirSearch(session, '/QuestionnaireResponse', { patient: patientId }),
+      fhirSearch(session, '/CareTeam', { patient: patientId }),
+      fhirSearch(session, '/CarePlan', { patient: patientId }),
+      fhirSearch(session, '/Procedure', { patient: patientId }),
+      fhirSearch(session, '/ServiceRequest', { patient: patientId }),
+      fhirSearch(session, '/Appointment', { patient: patientId })
+    ]);
+
+  const resources: LiveDataResourceSummary[] = [
+    resourceSummary('Patient', 'Patient.Read (Demographics) (R4)', patient ? 1 : 0),
+    resourceSummary('Patient match', 'Patient.$match (R4)', bundleCount(patientMatch as FhirBundle | undefined)),
+    resourceSummary('Coverage', 'Coverage.Search (Patient Insurance Information) (R4)', bundleCount(coverage)),
+    resourceSummary('Medication orders', 'MedicationRequest.Search (Signed Medication Order) (R4)', bundleCount(medicationRequests)),
+    resourceSummary('Medication list', 'List.Search (Medication List) (R4)', bundleCount(medicationList)),
+    resourceSummary('Medication details', 'Medication.Search (R4)', bundleCount(medicationResources)),
+    resourceSummary('Fill status', 'MedicationDispense.Search (Fill Status) (R4)', bundleCount(medicationDispenses)),
+    resourceSummary('Conditions', 'Condition.Search (Problems / Encounter Diagnosis) (R4)', bundleCount(conditions)),
+    resourceSummary('Labs', 'Observation.Search (Labs) (R4)', bundleCount(labs)),
+    resourceSummary('Vitals', 'Observation.Search (Vitals) (R4)', bundleCount(vitals)),
+    resourceSummary('Assessments', 'Observation.Search (Assessments) (R4)', bundleCount(assessments)),
+    resourceSummary('Diagnostic reports', 'DiagnosticReport.Search (Results) (R4)', bundleCount(diagnosticReports)),
+    resourceSummary('Clinical notes', 'DocumentReference.Search (Clinical Notes) (R4)', bundleCount(documents)),
+    resourceSummary('Allergies', 'AllergyIntolerance.Search (Patient Chart) (R4)', bundleCount(allergies)),
+    resourceSummary('Encounters', 'Encounter.Search (Patient Chart) (R4)', bundleCount(encounters)),
+    resourceSummary('Formulary history', 'ExplanationOfBenefit.Search (Prior Auth History) (R4)', bundleCount(priorAuthHistory)),
+    resourceSummary('PA questionnaires', 'QuestionnaireResponse.Search (Prior Auth) (R4)', bundleCount(paQuestionnaires)),
+    resourceSummary('Care team', 'CareTeam.Search (R4)', bundleCount(careTeam)),
+    resourceSummary('Care plans', 'CarePlan.Search (R4)', bundleCount(carePlans)),
+    resourceSummary('Procedures', 'Procedure.Search (R4)', bundleCount(procedures)),
+    resourceSummary('Service requests', 'ServiceRequest.Search (R4)', bundleCount(serviceRequests)),
+    resourceSummary('Appointments', 'Appointment.Search (R4)', bundleCount(appointments))
+  ];
+
+  return {
+    patient,
+    patientMatch,
+    coverage,
+    medicationRequests,
+    medicationList,
+    medicationResources,
+    medicationDispenses,
+    conditions,
+    labs,
+    vitals,
+    assessments,
+    diagnosticReports,
+    documents,
+    allergies,
+    encounters,
+    priorAuthHistory,
+    paQuestionnaires,
+    careTeam,
+    carePlans,
+    procedures,
+    serviceRequests,
+    appointments,
     resources
   };
 }
@@ -384,11 +455,21 @@ async function fhirSearch(session: EpicSession, path: string, params: Record<str
   return fetchJson(session, `${path}?${searchParams.toString()}`) as Promise<FhirBundle | undefined>;
 }
 
-async function fetchJson(session: EpicSession, path: string) {
+async function fhirPost(session: EpicSession, path: string, body: unknown) {
+  return fetchJson(session, path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/fhir+json' },
+    body: JSON.stringify(body)
+  }) as Promise<FhirBundle | undefined>;
+}
+
+async function fetchJson(session: EpicSession, path: string, init: RequestInit = {}) {
   const response = await fetch(`${session.issuer}${path}`, {
+    ...init,
     headers: {
       Authorization: `${session.tokenType} ${session.accessToken}`,
-      Accept: 'application/fhir+json, application/json'
+      Accept: 'application/fhir+json, application/json',
+      ...init.headers
     }
   });
   if (!response.ok) return undefined;
@@ -468,9 +549,17 @@ function selectedEpicApis() {
     'Binary.Read',
     'AllergyIntolerance.Read/Search',
     'Encounter.Read/Search',
+    'CareTeam.Read/Search',
+    'CarePlan.Read/Search',
+    'Procedure.Read/Search',
+    'ServiceRequest.Read/Search',
+    'Appointment.Read/Search',
     'ExplanationOfBenefit.Read/Search',
     'QuestionnaireResponse.Read',
+    'MedicationRequest.Update',
     'Claim.$submit/$inquire',
+    '$submit-attachment',
+    'PAS Claim Response Notification',
     'Coverage Requirements Discovery',
     'DTR Questionnaire operations'
   ];

@@ -1,4 +1,4 @@
-import { Activity, Database, ListChecks, Route, Send } from 'lucide-react';
+import { Activity, Database, ListChecks, Route, Send, Workflow } from 'lucide-react';
 import type { AccessCase, Role } from '../shared/types';
 
 const ownerLabel: Record<Role, string> = {
@@ -171,6 +171,28 @@ export function RightRail({ accessCase, activeRole }: { accessCase: AccessCase; 
           {accessCase.hiddenTimelineCount > 0 ? ` · ${accessCase.hiddenTimelineCount} upcoming` : ' · complete'}
         </div>
       </div>
+
+      {!patientMode && <div className="panel p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <Workflow className="h-4 w-4 text-slate-500" />
+          <h3 className="section-title">FHIR action queue</h3>
+        </div>
+        <div className="space-y-2">
+          {accessCase.epicWorkflowActions
+            .filter((action) => action.owner === activeRole || action.owner === 'system')
+            .slice(0, 4)
+            .map((action) => (
+              <div key={action.id} className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-sm font-semibold text-slate-950">{action.label}</div>
+                  <span className="rounded-full bg-white px-2 py-1 text-[11px] font-extrabold text-indigo-700">{action.method}</span>
+                </div>
+                <div className="mt-1 text-xs font-semibold text-indigo-700">{action.api}</div>
+                <p className="mt-2 text-xs leading-5 text-slate-600">{action.detail}</p>
+              </div>
+            ))}
+        </div>
+      </div>}
 
       {!patientMode && <div className="panel p-5">
         <div className="mb-4 flex items-center gap-2">
