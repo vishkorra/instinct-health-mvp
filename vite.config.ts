@@ -8,6 +8,7 @@ export default defineConfig({
   base: process.env.GITHUB_PAGES === '1' && repoName ? `/${repoName}/` : '/',
   server: {
     port: 5173,
+    allowedHosts: true,
     proxy: {
       '/api': 'http://localhost:4177'
     }
