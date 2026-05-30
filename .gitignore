@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vite/
+.playwright-mcp/
+data/*.sqlite
+data/*.sqlite-*
+*.log
+*.tsbuildinfo
+instinct-*.png
