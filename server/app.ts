@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { listScenarioCards } from '../src/shared/caseEngine';
 import { getScenario, scenarios } from '../src/shared/scenarios';
 import { assembleAccessCase } from './caseService';
+import { clearEpicSession, completeEpicCallback, getEpicStatus, startEpicLaunch } from './connectors/epicConnector';
 import { createDb } from './db';
 
 interface CreateServerOptions {
@@ -29,12 +30,23 @@ export async function createServer(options: CreateServerOptions = {}) {
       'Synthea-style local FHIR samples',
       'RxNav/RxNorm optional free lookup',
       'DailyMed optional free lookup',
-      'openFDA reference-ready connector path',
+      'openFDA drug label fallback lookup',
       'CMS Part D formulary reference modeling',
-      'Epic/SMART sandbox-ready architecture'
+      'CDC ICD-10-CM diagnosis code modeling',
+      'LOINC lab code modeling',
+      'Da Vinci PAS/CRD/DTR workflow modeling',
+      'Epic SMART on FHIR sandbox OAuth + live R4 reads'
     ],
-    note: 'The demo uses synthetic/local clinical data plus simulated payer and pharmacy workflow.'
+    note: 'After Epic SMART launch, the demo merges live sandbox FHIR data. Payer rules, PBM rejection events, and pharmacy workflow remain simulated until those external systems are connected.'
   }));
+
+  app.get('/epic/launch', async (request, reply) => startEpicLaunch(request, reply));
+
+  app.get('/epic/callback', async (request, reply) => completeEpicCallback(request, reply));
+
+  app.get('/api/epic/status', async (request) => getEpicStatus(request));
+
+  app.post('/api/epic/disconnect', async (request, reply) => clearEpicSession(request, reply));
 
   app.get('/api/scenarios', async () => listScenarioCards(scenarios));
 
@@ -43,7 +55,7 @@ export async function createServer(options: CreateServerOptions = {}) {
     const scenario = getScenario(scenarioId);
     if (!scenario) return reply.code(404).send({ error: 'Scenario not found' });
 
-    const accessCase = await assembleAccessCase(scenarioId, db.getStep(scenarioId));
+    const accessCase = await assembleAccessCase(scenarioId, db.getStep(scenarioId), request);
     return accessCase;
   });
 
@@ -54,7 +66,7 @@ export async function createServer(options: CreateServerOptions = {}) {
 
     const nextStep = Math.min(db.getStep(scenarioId) + 1, scenario.timeline.length - 1);
     db.setStep(scenarioId, nextStep);
-    return assembleAccessCase(scenarioId, nextStep);
+    return assembleAccessCase(scenarioId, nextStep, request);
   });
 
   app.post('/api/cases/:scenarioId/reset', async (request, reply) => {
@@ -62,7 +74,7 @@ export async function createServer(options: CreateServerOptions = {}) {
     if (!getScenario(scenarioId)) return reply.code(404).send({ error: 'Scenario not found' });
 
     db.resetStep(scenarioId);
-    return assembleAccessCase(scenarioId, 0);
+    return assembleAccessCase(scenarioId, 0, request);
   });
 
   return app;

@@ -3,6 +3,7 @@ import {
   ArrowRight,
   CheckCircle2,
   ClipboardList,
+  Database,
   FileText,
   Pill,
   ShieldAlert,
@@ -91,6 +92,8 @@ export function CaseWorkspace({ accessCase, activeRole, onRoleAction }: CaseWork
 
   return (
     <div className="space-y-4">
+      {accessCase.liveData && <LiveEpicPanel accessCase={accessCase} />}
+
       <FixPlanPanel accessCase={accessCase} activeRole={activeRole} />
 
       <div className="grid grid-cols-4 gap-4 max-2xl:grid-cols-2 max-md:grid-cols-1">
@@ -376,6 +379,11 @@ function PatientSimpleDashboard({ accessCase, onRoleAction }: { accessCase: Acce
           <div className="mb-4 text-xl font-extrabold text-slate-950">
             Current stop: <span className="text-teal-700">{currentStage}</span>
           </div>
+          {accessCase.liveData && (
+            <div className="mb-4 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-base font-semibold text-teal-900">
+              Connected to Epic sandbox chart for Patient/{accessCase.liveData.patientId}. Instinct is using live FHIR data where Epic returns it.
+            </div>
+          )}
 
           <div className="relative grid grid-cols-4 gap-3 max-sm:grid-cols-1">
             <div className="absolute left-[12.5%] right-[12.5%] top-6 h-2 rounded-full bg-slate-200 max-sm:hidden" />
@@ -444,6 +452,54 @@ function PatientSimpleDashboard({ accessCase, onRoleAction }: { accessCase: Acce
           </button>
         </div>
       </section>
+    </div>
+  );
+}
+
+function LiveEpicPanel({ accessCase }: { accessCase: AccessCase }) {
+  const liveData = accessCase.liveData;
+  if (!liveData) return null;
+
+  const loadedCount = liveData.resources.reduce((sum, resource) => sum + resource.count, 0);
+
+  return (
+    <div className="panel overflow-hidden border-cyan-200 bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-4 bg-gradient-to-r from-cyan-700 via-teal-600 to-emerald-500 px-5 py-4 text-white">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.18em] text-white/75">
+            <Database className="h-4 w-4" />
+            Live Epic data connection
+          </div>
+          <h3 className="mt-2 text-xl font-extrabold tracking-tight">
+            {loadedCount} sandbox FHIR resources loaded for Patient/{liveData.patientId}
+          </h3>
+          <p className="mt-1 max-w-4xl text-sm leading-6 text-white/85">
+            Instinct is merging live Epic patient, coverage, medication, lab, document, diagnosis, allergy, and encounter data into this case.
+            Payer rules, PBM rejection events, and pharmacy status remain simulated until those external workflows are connected.
+          </p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-teal-800">
+          {liveData.source}
+        </span>
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3 p-4">
+        {liveData.resources.map((resource) => (
+          <div key={resource.label} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-extrabold text-slate-950">{resource.label}</div>
+                <div className="mt-1 text-xs font-medium text-slate-500">{resource.api}</div>
+              </div>
+              <span className={`rounded-full px-2 py-1 text-xs font-extrabold ${
+                resource.status === 'connected' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+              }`}>
+                {resource.count}
+              </span>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-600">{resource.detail}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

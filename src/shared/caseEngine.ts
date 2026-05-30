@@ -1,9 +1,10 @@
-import type { AccessCase, ConnectorStatus, NextAction, Scenario } from './types';
+import type { AccessCase, ConnectorStatus, LiveDataSummary, NextAction, Scenario } from './types';
 
 export function buildAccessCase(
   scenario: Scenario,
   currentStep = 0,
-  connectorStatus: ConnectorStatus[] = []
+  connectorStatus: ConnectorStatus[] = [],
+  liveData?: LiveDataSummary
 ): AccessCase {
   const clampedStep = Math.max(0, Math.min(currentStep, scenario.timeline.length - 1));
   const visibleTimeline = scenario.timeline.slice(0, clampedStep + 1);
@@ -16,7 +17,8 @@ export function buildAccessCase(
     visibleTimeline,
     hiddenTimelineCount: scenario.timeline.length - visibleTimeline.length,
     nextAction,
-    connectorStatus
+    connectorStatus,
+    liveData
   };
 }
 

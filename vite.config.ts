@@ -10,7 +10,14 @@ export default defineConfig({
     port: 5173,
     allowedHosts: true,
     proxy: {
-      '/api': 'http://localhost:4177'
+      '/api': {
+        target: 'http://localhost:4177',
+        xfwd: true
+      },
+      '/epic': {
+        target: 'http://localhost:4177',
+        xfwd: true
+      }
     }
   }
 });

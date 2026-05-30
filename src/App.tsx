@@ -128,6 +128,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('epic') === 'connected') {
+      setActivityMessage('Epic SMART sandbox connected. Live FHIR data will be merged into cases where Epic returns resources.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
     getCase(selectedScenarioId)
       .then((data) => {

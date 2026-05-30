@@ -4,6 +4,12 @@ import { getScenario, scenarios } from './shared/scenarios';
 
 const staticConnectorStatus = [
   {
+    name: 'Epic SMART Connector',
+    mode: 'live-free-api',
+    status: 'fallback',
+    detail: 'Launch from Epic SMART sandbox to replace demo patient, coverage, medication, lab, and document data with live FHIR resources.'
+  },
+  {
     name: 'Static Demo Mode',
     mode: 'local-cache',
     status: 'fallback',
@@ -16,10 +22,22 @@ const staticConnectorStatus = [
     detail: 'Using local Synthea-style FHIR resources. Epic/SMART can replace this connector later.'
   },
   {
+    name: 'Drug Connector',
+    mode: 'live-free-api',
+    status: 'fallback',
+    detail: 'The full-stack app tries RxNav/RxNorm live lookup. Static GitHub Pages uses local RxNorm fallback data.'
+  },
+  {
+    name: 'Label Connector',
+    mode: 'live-free-api',
+    status: 'fallback',
+    detail: 'The full-stack app tries DailyMed first, then openFDA. Static GitHub Pages uses local label fallback data.'
+  },
+  {
     name: 'Coverage Connector',
     mode: 'simulated',
     status: 'simulated',
-    detail: 'Plan rules are local scenario data modeled after formulary and PA requirements.'
+    detail: 'Plan rules are local scenario data modeled after CMS Part D formulary concepts, ICD-10 diagnosis evidence, LOINC lab evidence, and Da Vinci PA requirements.'
   },
   {
     name: 'Pharmacy Connector',
@@ -31,7 +49,7 @@ const staticConnectorStatus = [
     name: 'Payer Connector',
     mode: 'simulated',
     status: 'simulated',
-    detail: 'PA decisions and missing-info responses are simulated for demo control.'
+    detail: 'PA decisions and missing-info responses are simulated using the Da Vinci PAS/CRD/DTR workflow model until a real payer endpoint is connected.'
   }
 ] satisfies AccessCase['connectorStatus'];
 

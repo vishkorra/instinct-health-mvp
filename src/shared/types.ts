@@ -46,7 +46,7 @@ export interface InsurancePlan {
 export interface EvidenceItem {
   label: string;
   value: string;
-  source: 'FHIR chart' | 'Patient reported' | 'Pharmacy' | 'Payer rule' | 'Simulated claim';
+  source: 'FHIR chart' | 'Patient reported' | 'Pharmacy' | 'Payer rule' | 'Simulated claim' | 'Drug database';
   status: 'found' | 'missing' | 'requested';
 }
 
@@ -135,12 +135,32 @@ export interface ConnectorStatus {
   detail: string;
 }
 
+export interface LiveDataResourceSummary {
+  label: string;
+  api: string;
+  count: number;
+  status: 'connected' | 'fallback';
+  detail: string;
+}
+
+export interface LiveDataSummary {
+  connected: boolean;
+  source: 'Epic SMART sandbox';
+  issuer: string;
+  patientId?: string;
+  lastSynced: string;
+  selectedApis: string[];
+  resources: LiveDataResourceSummary[];
+  note: string;
+}
+
 export interface AccessCase extends Scenario {
   currentStep: number;
   visibleTimeline: TimelineEvent[];
   hiddenTimelineCount: number;
   nextAction: NextAction;
   connectorStatus: ConnectorStatus[];
+  liveData?: LiveDataSummary;
 }
 
 export interface ScenarioListItem {
